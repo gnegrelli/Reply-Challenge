@@ -1,11 +1,9 @@
-
-
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
-pullData = open("1_victoria_lake.txt", "r").read()
+pullData = open("maps/victoria_lake.txt", "r").read()
 dataList = pullData.split("\n")
 
 first_row = dataList[0].split(" ")
