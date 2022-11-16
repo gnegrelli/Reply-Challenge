@@ -1,10 +1,9 @@
-import random
 from argparse import ArgumentParser
 from pathlib import Path
 from typing import Any, Dict
 
-from world import World
-from office import Office
+from classes.world import World
+from classes.office import Office
 
 
 def validate_args(args: ArgumentParser) -> Dict[str, Any]:
