@@ -1,3 +1,6 @@
+from typing import Tuple
+
+
 class Office(object):
     """"""
 
@@ -20,3 +23,7 @@ class Office(object):
 
     def __str__(self) -> str:
         return f'Office located at ({self.x}, {self.y}) with reward of {self.reward} points.'
+
+    @property
+    def location(self) -> Tuple:
+        return self.x, self.y
