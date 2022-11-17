@@ -20,13 +20,13 @@ class World(object):
         'T': 50,
     }
 
-    def __init__(self, height: int, width: int, **kwargs) -> None:
+    def __init__(self, width: int, height: int, **kwargs) -> None:
         # Validate inputs
         assert height > 0 and isinstance(height, int), 'Value for map height must be a positive integer.'
         assert width > 0 and isinstance(width, int), 'Value for map width must be a positive integer.'
 
-        self.h = height
         self.w = width
+        self.h = height
         self.map = None
 
     def add_world_terrain(self, string_terrain: str) -> None:
@@ -45,8 +45,8 @@ class World(object):
 
     def dijkstra(self, start: Tuple[int, int], finish: Tuple[int, int]) -> Tuple[float, List[Tuple[int, int]]]:
         """Method to find the cheapest path between two points in the world using Dijkstra algorithm"""
-        assert 0 <= start[0] <= self.h and 0 <= start[1] <= self.w, 'Invalid coordinate for starting point.'
-        assert 0 <= finish[0] <= self.h and 0 <= finish[1] <= self.w, 'Invalid coordinate for finishing point.'
+        assert 0 <= start[0] <= self.w and 0 <= start[1] <= self.h, 'Invalid coordinate for starting point.'
+        assert 0 <= finish[0] <= self.w and 0 <= finish[1] <= self.h, 'Invalid coordinate for finishing point.'
 
         # Initialize dict of visited and unvisited locations. These dicts store the cell coordinates as key and a
         # tuple as value containing the cost of reaching to the position and from which cell.
@@ -60,15 +60,15 @@ class World(object):
                 neighbour = (current_location[0] + dx, current_location[1] + dy)
 
                 # Skip if neighbour is out of the map boundaries or was already visited
-                if not 0 <= neighbour[0] < self.h or not 0 <= neighbour[1] < self.w or neighbour in visited.keys():
+                if not 0 <= neighbour[0] < self.w or not 0 <= neighbour[1] < self.h or neighbour in visited.keys():
                     continue
 
                 # Skip neighbours that cannot be accessed (value = -1)
-                if self.map[neighbour[0]][neighbour[1]] <= 0:
+                if self.map[neighbour[1]][neighbour[0]] <= 0:
                     continue
 
                 # Calculate cost to reach neighbour from current position
-                neighbour_cost = self.map[neighbour[0]][neighbour[1]] + visited[current_location][0]
+                neighbour_cost = self.map[neighbour[1]][neighbour[0]] + visited[current_location][0]
 
                 # Update cost to reach unvisited neighbour
                 stored_neighbour_cost = unvisited.get(neighbour, (None, None))[0]
