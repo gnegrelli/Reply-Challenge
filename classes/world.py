@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-from typing import List, Tuple
+from typing import List, Set, Tuple
 
 
 class World(object):
@@ -98,6 +98,16 @@ class World(object):
 
         sns.heatmap(self.map)
         plt.show()
+
+    def allowed_spots(self, occupied_spots: List[Tuple[int, int]] = None) -> Set[Tuple[int, int]]:
+        allowed_spots = {(x, y) for x in range(self.w) for y in range(self.h) if self.map[y][x] >= 0}
+
+        if occupied_spots is None:
+            occupied_spots = set()
+        else:
+            occupied_spots = set(occupied_spots)
+
+        return allowed_spots - occupied_spots
 
     def __str__(self) -> str:
         if self.map is None:
