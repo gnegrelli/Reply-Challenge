@@ -6,6 +6,8 @@ import seaborn as sns
 
 from typing import List, Set, Tuple
 
+from exceptions.world_exceptions import ImpossiblePathException, UnmappedWorldException
+
 
 class World(object):
     """Class to create world map"""
@@ -77,7 +79,7 @@ class World(object):
 
             # Raise exception if there is no feasible path between points
             if not unvisited:
-                raise Exception('No path is feasible!')
+                raise ImpossiblePathException('No path is feasible!')
 
             # Find the cheapest cell in the list of unvisited and move into it
             current_location = min(unvisited, key=unvisited.get)
@@ -94,9 +96,9 @@ class World(object):
     def view_map(self) -> None:
         """Plot map using seaborn's heatmap"""
         if self.map is None:
-            raise AttributeError('World not initialized yet!')
+            raise UnmappedWorldException('World not initialized yet!')
 
-        sns.heatmap(self.map)
+        sns.heatmap(self.map, robust=True, linewidths=.5)
         plt.show()
 
     def allowed_spots(self, occupied_spots: List[Tuple[int, int]] = None) -> Set[Tuple[int, int]]:
