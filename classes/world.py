@@ -37,7 +37,7 @@ class World(object):
 
         # Remove whitespaces from input string
         clean_string = re.sub(r'\s+', '', string_terrain)
-        assert len(clean_string) == self.w*self.h, f'Input string must have a length of {self.w*self.h} chars'
+        assert len(clean_string) == self.w * self.h, f'Input string must have a length of {self.w * self.h} chars'
 
         # Convert input string to cost values
         map_values = [self.MAP_VALUES.get(char, -1) for char in clean_string]
@@ -45,8 +45,11 @@ class World(object):
         # Create matrix with cost of each world position
         self.map = np.array(map_values).reshape((self.h, self.w))
 
-    def dijkstra(self, start: Tuple[int, int], finish: Tuple[int, int]) -> Tuple[float, List[Tuple[int, int]]]:
-        """Method to find the cheapest path between two points in the world using Dijkstra algorithm"""
+    def calculate_path_cost(
+            self, start: Tuple[int, int], finish: Tuple[int, int]
+    ) -> Tuple[float, List[Tuple[int, int]]]:
+
+        """Method to find the cheapest path between two points in the world"""
         assert 0 <= start[0] <= self.w and 0 <= start[1] <= self.h, 'Invalid coordinate for starting point.'
         assert 0 <= finish[0] <= self.w and 0 <= finish[1] <= self.h, 'Invalid coordinate for finishing point.'
 
@@ -71,6 +74,9 @@ class World(object):
 
                 # Calculate cost to reach neighbour from current position
                 neighbour_cost = self.map[neighbour[1]][neighbour[0]] + visited[current_location][0]
+
+                # Add distance to goal in cost to optimize search
+                neighbour_cost += 10 * (abs(finish[0] - neighbour[0]) + abs(finish[1] - neighbour[1]))
 
                 # Update cost to reach unvisited neighbour
                 stored_neighbour_cost = unvisited.get(neighbour, (None, None))[0]
