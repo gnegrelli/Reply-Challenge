@@ -25,7 +25,7 @@ def read_map_file(file: Path) -> Dict[str, Any]:
     with open(file, 'r') as file:
         map_width, map_height, n_customers, n_offices = map(int, file.readline().strip().split(' '))
 
-        world = World(map_height, map_width)
+        world = World(map_width, map_height)
 
         customers = []
         for _ in range(n_customers):
@@ -33,7 +33,6 @@ def read_map_file(file: Path) -> Dict[str, Any]:
             customers.append(Office(customer_x, customer_y, customer_reward))
 
         world.add_world_terrain(file.read())
-        world.view_map()
 
     return {'world': world, 'customers': customers, 'n_offices': n_offices, }
 
