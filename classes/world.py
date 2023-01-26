@@ -93,11 +93,13 @@ class World(object):
 
         # Construct path from finishing to starting point and reverse it
         path = [finish]
+        cost = 0
         while path[-1] != start:
+            cost += self.map[path[-1][1]][path[-1][0]]
             path.append(visited[path[-1]][1])
         path.reverse()
 
-        return visited[finish][0], path
+        return cost, path
 
     def view_map(self) -> None:
         """Plot map using seaborn's heatmap"""
