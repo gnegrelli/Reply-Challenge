@@ -101,12 +101,30 @@ class World(object):
 
         return cost, path
 
-    def view_map(self) -> None:
+    def view_map(self, customers = None, offices = None, paths: List[List[Tuple[int, int]]] = None) -> None:
         """Plot map using seaborn's heatmap"""
         if self.map is None:
             raise UnmappedWorldException('World not initialized yet!')
 
-        sns.heatmap(self.map, robust=True, linewidths=.5)
+        bins = np.array(list(reversed(self.MAP_VALUES.values())))
+        discrete_map = np.array([np.digitize(row, bins) for row in self.map])
+
+        ax = sns.heatmap(discrete_map, linewidths=.5, square=True, cmap=sns.cubehelix_palette(len(bins)))
+
+        if customers is not None:
+            for customer in customers:
+                ax.plot(*map(lambda x: x + .5, customer.location), 'go')
+
+        if offices is not None:
+            for office in offices:
+                ax.plot(*map(lambda x: x + .5, office.location), 'y*')
+
+        if paths is not None:
+            for path in map(np.array, paths):
+                path = path + .5 * np.ones_like(path)
+                x, y = zip(*path)
+                ax.plot(x, y, '-.')
+
         plt.show()
 
     def allowed_spots(self, occupied_spots: List[Tuple[int, int]] = None) -> Set[Tuple[int, int]]:
