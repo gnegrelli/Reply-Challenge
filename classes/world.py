@@ -6,6 +6,7 @@ import seaborn as sns
 
 from typing import List, Set, Tuple
 
+from classes.office import Office
 from exceptions.world_exceptions import ImpossiblePathException, UnmappedWorldException
 
 
@@ -101,7 +102,8 @@ class World(object):
 
         return cost, path
 
-    def view_map(self, customers = None, offices = None, paths: List[List[Tuple[int, int]]] = None) -> None:
+    def view_map(self, customers: List[Office] = None, offices: List[Office] = None,
+                 paths: List[List[Tuple[int, int]]] = None) -> None:
         """Plot map using seaborn's heatmap"""
         if self.map is None:
             raise UnmappedWorldException('World not initialized yet!')
