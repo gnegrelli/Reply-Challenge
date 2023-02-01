@@ -115,11 +115,11 @@ class World(object):
 
         if customers is not None:
             for customer in customers:
-                ax.plot(*map(lambda x: x + .5, customer.location), 'go')
+                ax.plot(*map(lambda loc: loc + .5, customer.location), 'go')
 
         if offices is not None:
             for office in offices:
-                ax.plot(*map(lambda x: x + .5, office.location), 'y*')
+                ax.plot(*map(lambda loc: loc + .5, office.location), 'y*')
 
         if paths is not None:
             for path in map(np.array, paths):
