@@ -2,6 +2,7 @@ import re
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import seaborn as sns
 
 from typing import List, Set, Tuple
@@ -31,6 +32,7 @@ class World(object):
         self.w = width
         self.h = height
         self.map = None
+        self.costs = None
 
     def add_world_terrain(self, string_terrain: str) -> None:
         """Method to add cost to world positions using given string"""
@@ -45,6 +47,22 @@ class World(object):
 
         # Create matrix with cost of each world position
         self.map = np.array(map_values).reshape((self.h, self.w))
+
+    def calculate_costs(self):
+        """Method to calculate cost of all paths in world"""
+        positions = [(x, y) for x in range(self.w) for y in range(self.h)]
+        self.costs = pd.DataFrame(np.nan, index=positions, columns=positions)
+
+        for i, start in enumerate(positions):
+            for finish in positions[i + 1:]:
+                try:
+                    cost = self.calculate_path_cost(start, finish)[0]
+                except ImpossiblePathException:
+                    continue
+                print(f'From {start} to {finish}: {cost}')
+                print(f'From {finish} to {start}: {cost + self.map[finish[1]][finish[0]] - self.map[start[1]][start[0]]}')
+                self.costs[finish][start] = cost
+                self.costs[start][finish] = cost + self.map[finish[1]][[finish[0]]] - self.map[start[1]][[start[0]]]
 
     def calculate_path_cost(
             self, start: Tuple[int, int], finish: Tuple[int, int]
