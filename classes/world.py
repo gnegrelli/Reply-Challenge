@@ -49,10 +49,15 @@ class World(object):
     def calculate_path_cost(
             self, start: Tuple[int, int], finish: Tuple[int, int]
     ) -> Tuple[float, List[Tuple[int, int]]]:
-
         """Method to find the cheapest path between two points in the world"""
         assert 0 <= start[0] <= self.w and 0 <= start[1] <= self.h, 'Invalid coordinate for starting point.'
         assert 0 <= finish[0] <= self.w and 0 <= finish[1] <= self.h, 'Invalid coordinate for finishing point.'
+
+        if self.map[start[1]][start[0]] <= 0:
+            raise ImpossiblePathException(f'Cannot create path that starts in position {start}.')
+
+        if self.map[finish[1]][finish[0]] <= 0:
+            raise ImpossiblePathException(f'Cannot create path that ends in position {start}.')
 
         # Initialize dict of visited and unvisited locations. These dicts store the cell coordinates as key and a
         # tuple as value containing the cost of reaching to the position and from which cell.
