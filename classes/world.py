@@ -24,6 +24,8 @@ class World(object):
         'T': 50,
     }
 
+    PATHS_FROM_TO = dict()
+
     def __init__(self, width: int, height: int, **kwargs) -> None:
         # Validate inputs
         assert height > 0 and isinstance(height, int), 'Value for map height must be a positive integer.'
@@ -48,6 +50,7 @@ class World(object):
         # Create matrix with cost of each world position
         self.map = np.array(map_values).reshape((self.h, self.w))
 
+    # TODO: This is taking too long. There must be a way to speed it up.
     def calculate_costs(self):
         """Method to calculate cost of all paths in world"""
         positions = [(x, y) for x in range(self.w) for y in range(self.h)]
@@ -76,6 +79,13 @@ class World(object):
 
         if self.map[finish[1]][finish[0]] <= 0:
             raise ImpossiblePathException(f'Cannot create path that ends in position {start}.')
+
+        # Check if path was already evaluated
+        if self.PATHS_FROM_TO.get((start, finish)) is not None:
+            path = self.PATHS_FROM_TO[(start, finish)]
+            if not path:
+                raise ImpossiblePathException('No path is feasible!')
+            return self.costs[finish][start], path
 
         # Initialize dict of visited and unvisited locations. These dicts store the cell coordinates as key and a
         # tuple as value containing the cost of reaching to the position and from which cell.
