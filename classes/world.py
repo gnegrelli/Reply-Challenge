@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from tqdm.contrib import tenumerate
 from typing import List, Set, Tuple
 
 from classes.office import Office
@@ -56,17 +57,60 @@ class World(object):
         positions = [(x, y) for x in range(self.w) for y in range(self.h)]
         self.costs = pd.DataFrame(np.nan, index=positions, columns=positions)
 
-        for i, start in enumerate(positions):
-            for finish in positions[i + 1:]:
+        for i, start in tenumerate(positions):
+            # Calculate cost to positions after start in list. Cost to previous positions was already calculated
+            for j, finish in enumerate(positions[i + 1:]):
                 try:
-                    cost = self.calculate_path_cost(start, finish)[0]
+                    cost, path = self.calculate_path_cost(start, finish)
                 except ImpossiblePathException:
+                    # If path is not possible, set it as an empty list
+                    self.PATHS_FROM_TO[(start, finish)] = []
+                    self.PATHS_FROM_TO[(finish, start)] = []
                     continue
-                print(f'From {start} to {finish}: {cost}')
-                print(f'From {finish} to {start}: {cost + self.map[finish[1]][finish[0]] - self.map[start[1]][start[0]]}')
-                self.costs[finish][start] = cost
-                self.costs[start][finish] = cost + self.map[finish[1]][[finish[0]]] - self.map[start[1]][[start[0]]]
 
+                # Calculate cost of reverse path
+                reverse_cost = cost + self.map[start[1]][start[0]]
+
+                # Calculate cost of inner paths within the longer path. E.g. if path from A to D passes through B and C,
+                # it is possible to calculate the cost between A->B, A->C, A->D, B->C, B->D, C->D and reversed paths.
+                for path_index, start_walk in enumerate(path[:-1]):
+
+                    # Store the cost of path (and reversed path) between position 'start_walk' and end of path
+                    cost_walk = cost
+                    reverse_cost_walk = reverse_cost
+
+                    # Iterate between positions in full path as end of inner path
+                    for rev_path_index, finish_walk in enumerate(reversed(path[path_index + 1:])):
+
+                        # If path between start_walk and finish_walk was already calculated, all subsequent inner paths
+                        # were also calculated. This allows algorithm to go to next starting position.
+                        if self.PATHS_FROM_TO.get((start_walk, finish_walk)) is not None:
+                            break
+
+                        # Store cost of inner path
+                        self.costs[finish_walk][start_walk] = cost_walk
+
+                        # Store cost of reversed inner path
+                        reverse_cost_walk -= self.map[finish_walk[1]][finish_walk[0]]
+                        self.costs[start_walk][finish_walk] = reverse_cost_walk
+
+                        # Store direct and reversed ineer paths
+                        path_walk = path[path_index:-rev_path_index] if rev_path_index else path[path_index:]
+                        self.PATHS_FROM_TO[(start_walk, finish_walk)] = path_walk
+                        self.PATHS_FROM_TO[(finish_walk, start_walk)] = list(reversed(path_walk))
+
+                        # Remove cost of last position of path
+                        cost_walk -= self.map[finish_walk[1]][finish_walk[0]]
+
+                    # Update cost and reversed_cost for new starting position of path
+                    cost -= self.map[start_walk[1]][start_walk[0]]
+                    reverse_cost -= self.map[start_walk[1]][start_walk[0]]
+
+    # TODO: Use self.costs to speed up this calculation (if optimal cost of current location to finish is already
+    #  evaluated it is possible to join the solutions and skip the rest of the calculation). To do so, it is probably
+    #  necessary to store all the paths in a dataframe.
+    #  Not sure if that is really true though. During exploration A* may land in one cell that is currently the
+    #  best path, but may not be part of the best route
     def calculate_path_cost(
             self, start: Tuple[int, int], finish: Tuple[int, int]
     ) -> Tuple[float, List[Tuple[int, int]]]:
