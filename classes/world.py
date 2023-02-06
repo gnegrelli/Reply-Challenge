@@ -136,6 +136,12 @@ class World(object):
 
         ax = sns.heatmap(discrete_map, linewidths=.5, square=True, cmap=sns.cubehelix_palette(len(bins)))
 
+        if paths is not None:
+            for path in map(np.array, paths):
+                path = path + .5 * np.ones_like(path)
+                x, y = zip(*path)
+                ax.plot(x, y, '-.')
+
         if customers is not None:
             for customer in customers:
                 ax.plot(*map(lambda loc: loc + .5, customer.location), 'go')
@@ -143,12 +149,6 @@ class World(object):
         if offices is not None:
             for office in offices:
                 ax.plot(*map(lambda loc: loc + .5, office.location), 'y*')
-
-        if paths is not None:
-            for path in map(np.array, paths):
-                path = path + .5 * np.ones_like(path)
-                x, y = zip(*path)
-                ax.plot(x, y, '-.')
 
         plt.show()
 
