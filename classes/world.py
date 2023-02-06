@@ -6,7 +6,7 @@ import pandas as pd
 import seaborn as sns
 
 from tqdm.contrib import tenumerate
-from typing import List, Set, Tuple
+from typing import List, Set, Tuple, Union
 
 from classes.office import Office
 from exceptions.world_exceptions import ImpossiblePathException, UnmappedWorldException
@@ -34,8 +34,17 @@ class World(object):
 
         self.w = width
         self.h = height
-        self.map = None
+        self._map = None
         self.costs = None
+
+    def loc_value(self, location: Union[Tuple[int, int], Office]) -> Union[int, None]:
+        if self._map is None:
+            return None
+
+        if isinstance(location, Office):
+            location = location.location
+
+        return self._map[location[1]][location[0]]
 
     def add_world_terrain(self, string_terrain: str) -> None:
         """Method to add cost to world positions using given string"""
@@ -49,7 +58,7 @@ class World(object):
         map_values = [self.MAP_VALUES.get(char, -1) for char in clean_string]
 
         # Create matrix with cost of each world position
-        self.map = np.array(map_values).reshape((self.h, self.w))
+        self._map = np.array(map_values).reshape((self.h, self.w))
 
     # TODO: This is taking too long. There must be a way to speed it up.
     def calculate_costs(self):
@@ -69,7 +78,7 @@ class World(object):
                     continue
 
                 # Calculate cost of reverse path
-                reverse_cost = cost + self.map[start[1]][start[0]]
+                reverse_cost = cost + self.loc_value(start)
 
                 # Calculate cost of inner paths within the longer path. E.g. if path from A to D passes through B and C,
                 # it is possible to calculate the cost between A->B, A->C, A->D, B->C, B->D, C->D and reversed paths.
@@ -91,7 +100,7 @@ class World(object):
                         self.costs[finish_walk][start_walk] = cost_walk
 
                         # Store cost of reversed inner path
-                        reverse_cost_walk -= self.map[finish_walk[1]][finish_walk[0]]
+                        reverse_cost_walk -= self.loc_value(finish_walk)
                         self.costs[start_walk][finish_walk] = reverse_cost_walk
 
                         # Store direct and reversed ineer paths
@@ -100,11 +109,11 @@ class World(object):
                         self.PATHS_FROM_TO[(finish_walk, start_walk)] = list(reversed(path_walk))
 
                         # Remove cost of last position of path
-                        cost_walk -= self.map[finish_walk[1]][finish_walk[0]]
+                        cost_walk -= self.loc_value(finish_walk)
 
                     # Update cost and reversed_cost for new starting position of path
-                    cost -= self.map[start_walk[1]][start_walk[0]]
-                    reverse_cost -= self.map[start_walk[1]][start_walk[0]]
+                    cost -= self.loc_value(start_walk)
+                    reverse_cost -= self.loc_value(start_walk)
 
     # TODO: Use self.costs to speed up this calculation (if optimal cost of current location to finish is already
     #  evaluated it is possible to join the solutions and skip the rest of the calculation). To do so, it is probably
@@ -118,10 +127,10 @@ class World(object):
         assert 0 <= start[0] <= self.w and 0 <= start[1] <= self.h, 'Invalid coordinate for starting point.'
         assert 0 <= finish[0] <= self.w and 0 <= finish[1] <= self.h, 'Invalid coordinate for finishing point.'
 
-        if self.map[start[1]][start[0]] <= 0:
+        if self.loc_value(start) <= 0:
             raise ImpossiblePathException(f'Cannot create path that starts in position {start}.')
 
-        if self.map[finish[1]][finish[0]] <= 0:
+        if self.loc_value(finish) <= 0:
             raise ImpossiblePathException(f'Cannot create path that ends in position {start}.')
 
         # Check if path was already evaluated
@@ -147,11 +156,11 @@ class World(object):
                     continue
 
                 # Skip neighbours that cannot be accessed (value = -1)
-                if self.map[neighbour[1]][neighbour[0]] <= 0:
+                if self.loc_value(neighbour) <= 0:
                     continue
 
                 # Calculate cost to reach neighbour from current position
-                neighbour_cost = self.map[neighbour[1]][neighbour[0]] + visited[current_location][0]
+                neighbour_cost = self.loc_value(neighbour) + visited[current_location][0]
 
                 # Add distance to goal in cost to optimize search
                 neighbour_cost += 10 * (abs(finish[0] - neighbour[0]) + abs(finish[1] - neighbour[1]))
@@ -173,7 +182,7 @@ class World(object):
         path = [finish]
         cost = 0
         while path[-1] != start:
-            cost += self.map[path[-1][1]][path[-1][0]]
+            cost += self.loc_value(path[-1])
             path.append(visited[path[-1]][1])
         path.reverse()
 
@@ -182,11 +191,11 @@ class World(object):
     def view_map(self, customers: List[Office] = None, offices: List[Office] = None,
                  paths: List[List[Tuple[int, int]]] = None) -> None:
         """Plot map using seaborn's heatmap"""
-        if self.map is None:
+        if self._map is None:
             raise UnmappedWorldException('World not initialized yet!')
 
         bins = np.array(list(reversed(self.MAP_VALUES.values())))
-        discrete_map = np.array([np.digitize(row, bins) for row in self.map])
+        discrete_map = np.array([np.digitize(row, bins) for row in self._map])
 
         ax = sns.heatmap(discrete_map, linewidths=.5, square=True, cmap=sns.cubehelix_palette(len(bins)))
 
@@ -207,7 +216,7 @@ class World(object):
         plt.show()
 
     def allowed_spots(self, occupied_spots: List[Tuple[int, int]] = None) -> Set[Tuple[int, int]]:
-        allowed_spots = {(x, y) for x in range(self.w) for y in range(self.h) if self.map[y][x] >= 0}
+        allowed_spots = {(x, y) for x in range(self.w) for y in range(self.h) if self.loc_value((y, x)) >= 0}
 
         if occupied_spots is None:
             occupied_spots = set()
@@ -217,11 +226,11 @@ class World(object):
         return allowed_spots - occupied_spots
 
     def __str__(self) -> str:
-        if self.map is None:
+        if self._map is None:
             return 'World not initialized yet!'
 
         string = ''
-        for row in self.map:
+        for row in self._map:
             string += '|'
             for item in row:
                 string += f'{item:^6}|'
