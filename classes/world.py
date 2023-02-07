@@ -189,7 +189,7 @@ class World(object):
         return cost, path
 
     def view_map(self, customers: List[Office] = None, offices: List[Office] = None,
-                 paths: List[List[Tuple[int, int]]] = None) -> None:
+                 paths: List[List[Tuple[int, int]]] = None, **kwargs) -> None:
         """Plot map using seaborn's heatmap"""
         if self._map is None:
             raise UnmappedWorldException('World not initialized yet!')
@@ -197,7 +197,7 @@ class World(object):
         bins = np.array(list(reversed(self.MAP_VALUES.values())))
         discrete_map = np.array([np.digitize(row, bins) for row in self._map])
 
-        ax = sns.heatmap(discrete_map, linewidths=.5, square=True, cmap=sns.cubehelix_palette(len(bins)))
+        ax = sns.heatmap(discrete_map, linewidths=.5, square=True, cmap=sns.cubehelix_palette(len(bins)), **kwargs)
 
         if paths is not None:
             for path in map(np.array, paths):
