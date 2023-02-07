@@ -63,6 +63,8 @@ class World(object):
     # TODO: This is taking too long. There must be a way to speed it up.
     def calculate_costs(self):
         """Method to calculate cost of all paths in world"""
+        # TODO: maybe use self.allowed_positions instead of positions.
+        #  Does it make sense to keep unreachable positions in list for evaluation???
         positions = [(x, y) for x in range(self.w) for y in range(self.h)]
         self.costs = pd.DataFrame(np.nan, index=positions, columns=positions)
 
@@ -148,7 +150,7 @@ class World(object):
 
         while current_location != finish:
             # Look for northern, southern, eastern and western neighbours of current location
-            for dx, dy in [(-1, 0), (1, 0), (0, 1), (0, -1)]:  # N, S, E, W
+            for dx, dy in [(-1, 0), (1, 0), (0, 1), (0, -1)]:  # W, E, S, N
                 neighbour = (current_location[0] + dx, current_location[1] + dy)
 
                 # Skip if neighbour is out of the map boundaries or was already visited
@@ -163,11 +165,12 @@ class World(object):
                 neighbour_cost = self.loc_value(neighbour) + visited[current_location][0]
 
                 # Add distance to goal in cost to optimize search
-                neighbour_cost += 10 * (abs(finish[0] - neighbour[0]) + abs(finish[1] - neighbour[1]))
+                # TODO: Reevaluate the weight given to distance. Maybe have it as a function argument
+                distance_factor = 10 * (abs(finish[0] - neighbour[0]) + abs(finish[1] - neighbour[1]))
 
                 # Update cost to reach unvisited neighbour
                 stored_neighbour_cost = unvisited.get(neighbour, (None, None))[0]
-                if stored_neighbour_cost is None or neighbour_cost < stored_neighbour_cost:
+                if stored_neighbour_cost is None or neighbour_cost + distance_factor < stored_neighbour_cost:
                     unvisited[neighbour] = (neighbour_cost, current_location)
 
             # Raise exception if there is no feasible path between points
