@@ -216,7 +216,7 @@ class World(object):
         plt.show()
 
     def allowed_spots(self, occupied_spots: List[Tuple[int, int]] = None) -> Set[Tuple[int, int]]:
-        allowed_spots = {(x, y) for x in range(self.w) for y in range(self.h) if self.loc_value((y, x)) >= 0}
+        allowed_spots = {(x, y) for x in range(self.w) for y in range(self.h) if self.loc_value((x, y)) >= 0}
 
         if occupied_spots is None:
             occupied_spots = set()
