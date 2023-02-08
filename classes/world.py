@@ -218,13 +218,13 @@ class World(object):
 
         plt.show()
 
-    def allowed_spots(self, occupied_spots: List[Tuple[int, int]] = None) -> Set[Tuple[int, int]]:
+    def allowed_spots(self, occupied_spots: List[Union[Office, Tuple[int, int]]] = None) -> Set[Tuple[int, int]]:
         allowed_spots = {(x, y) for x in range(self.w) for y in range(self.h) if self.loc_value((x, y)) >= 0}
 
         if occupied_spots is None:
             occupied_spots = set()
         else:
-            occupied_spots = set(occupied_spots)
+            occupied_spots = {spot.location if isinstance(spot, Office) else spot for spot in occupied_spots}
 
         return allowed_spots - occupied_spots
 
