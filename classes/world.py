@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from tqdm.contrib import tenumerate
+from tqdm import tqdm
 from typing import List, Set, Tuple, Union
 
 from classes.office import Office
@@ -61,61 +61,45 @@ class World(object):
         self._map = np.array(map_values).reshape((self.h, self.w))
 
     # TODO: This is taking too long. There must be a way to speed it up.
-    def calculate_costs(self):
-        """Method to calculate cost of all paths in world"""
-        # TODO: maybe use self.allowed_positions instead of positions.
-        #  Does it make sense to keep unreachable positions in list for evaluation???
-        positions = [(x, y) for x in range(self.w) for y in range(self.h)]
-        self.costs = pd.DataFrame(np.nan, index=positions, columns=positions)
+    def calculate_costs_to_customers(self, customers: List[Office]):
+        """Method to calculate cost of paths leading to customers"""
+        spots = list(self.allowed_spots(customers))
+        customer_spots = [customer.location for customer in customers]
+        self.costs = pd.DataFrame(np.nan, index=spots, columns=customer_spots)
 
-        for i, start in tenumerate(positions):
-            # Calculate cost to positions after start in list. Cost to previous positions was already calculated
-            for j, finish in enumerate(positions[i + 1:]):
+        for start in tqdm(spots):
+            # Calculate cost from start to customers
+            for finish in customer_spots:
+
+                # Skip if cost was already calculated
+                if self.PATHS_FROM_TO.get((start, finish)) is not None:
+                    continue
+
                 try:
                     cost, path = self.calculate_path_cost(start, finish)
                 except ImpossiblePathException:
                     # If path is not possible, set it as an empty list
                     self.PATHS_FROM_TO[(start, finish)] = []
-                    self.PATHS_FROM_TO[(finish, start)] = []
                     continue
 
-                # Calculate cost of reverse path
-                reverse_cost = cost + self.loc_value(start)
+                # Calculate cost of inner paths
+                for i, start_path in enumerate(path[:-1]):
+                    # If cost from start_path was already calculated (and consequently all following start_paths),
+                    # evaluate path for next customer
+                    if self.PATHS_FROM_TO.get((start_path, finish)) is not None:
+                        break
 
-                # Calculate cost of inner paths within the longer path. E.g. if path from A to D passes through B and C,
-                # it is possible to calculate the cost between A->B, A->C, A->D, B->C, B->D, C->D and reversed paths.
-                for path_index, start_walk in enumerate(path[:-1]):
+                    # Skip calculation of paths starting in a customer spot
+                    if start_path in customer_spots:
+                        continue
 
-                    # Store the cost of path (and reversed path) between position 'start_walk' and end of path
-                    cost_walk = cost
-                    reverse_cost_walk = reverse_cost
+                    # Adjust cost for start points in inner path
+                    if start_path != start:
+                        cost -= self.loc_value(start_path)
 
-                    # Iterate between positions in full path as end of inner path
-                    for rev_path_index, finish_walk in enumerate(reversed(path[path_index + 1:])):
-
-                        # If path between start_walk and finish_walk was already calculated, all subsequent inner paths
-                        # were also calculated. This allows algorithm to go to next starting position.
-                        if self.PATHS_FROM_TO.get((start_walk, finish_walk)) is not None:
-                            break
-
-                        # Store cost of inner path
-                        self.costs[finish_walk][start_walk] = cost_walk
-
-                        # Store cost of reversed inner path
-                        reverse_cost_walk -= self.loc_value(finish_walk)
-                        self.costs[start_walk][finish_walk] = reverse_cost_walk
-
-                        # Store direct and reversed ineer paths
-                        path_walk = path[path_index:-rev_path_index] if rev_path_index else path[path_index:]
-                        self.PATHS_FROM_TO[(start_walk, finish_walk)] = path_walk
-                        self.PATHS_FROM_TO[(finish_walk, start_walk)] = list(reversed(path_walk))
-
-                        # Remove cost of last position of path
-                        cost_walk -= self.loc_value(finish_walk)
-
-                    # Update cost and reversed_cost for new starting position of path
-                    cost -= self.loc_value(start_walk)
-                    reverse_cost -= self.loc_value(start_walk)
+                    # Store cost and path
+                    self.costs[finish][start_path] = cost
+                    self.PATHS_FROM_TO[(start_path, finish)] = path[i:]
 
     # TODO: Use self.costs to speed up this calculation (if optimal cost of current location to finish is already
     #  evaluated it is possible to join the solutions and skip the rest of the calculation). To do so, it is probably
