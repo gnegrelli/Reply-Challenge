@@ -1,12 +1,13 @@
+import pickle
 import random
 
 from argparse import ArgumentParser
+from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List
 
 from classes.world import World
 from classes.office import Office
-from exceptions.world_exceptions import ImpossiblePathException
 
 
 def validate_args(args: ArgumentParser) -> Dict[str, Any]:
@@ -47,66 +48,47 @@ def allocate_offices(world: World, customers: List[Office], n_offices: int = 1, 
     solutions = dict()
 
     # Create list of spots offices cannot occupy
-    occupied_spots = [customer.location for customer in customers]
+    customer_spots = [customer.location for customer in customers]
 
     # Since the convergence of K-Means clustering algorithm depends on the initial centroids chosen, we must execute
     # it a few times and to find the optimal solution.
     # Execute the K-Means clustering algorithm for n_init times and store the results
     for init in range(n_init):
         # Randomly allocate the initial centroids (offices)
-        offices = [Office(*spot) for spot in random.choices(tuple(world.allowed_spots(occupied_spots)), k=n_offices)]
+        office_spots = random.choices(tuple(world.allowed_spots(customer_spots)), k=n_offices)
 
         for it in range(max_it):
             total_cost = 0
-            customer_to_office = dict()
+            clusters = defaultdict(list)
 
             # Assign each customer to its nearest office
-            for customer in customers:
-                min_cost = None
-                for office in offices:
-                    # Retrieve cost between office and customer
-                    try:
-                        cost, _ = world.calculate_path_cost(office.location, customer.location)
-                    except ImpossiblePathException:
-                        continue
-
-                    # Store office that is closest to current customer
-                    if min_cost is None or cost < min_cost:
-                        min_cost = cost
-                        customer_to_office[customer] = office
-
-                # Add cost of path to total_cost of solution
-                total_cost += min_cost
+            for customer in customer_spots:
+                closest_office = world.costs[customer][office_spots].idxmin()
+                clusters[closest_office].append(customer)
+                total_cost += world.costs[customer][closest_office]
 
             # Reevaluate position of offices based on their clusters
             centroids = set()
-            for old_centroid in customer_to_office.values():
-                # Group customer allocated to same centroid
-                cluster = [
-                    customer.location for customer, centroid in customer_to_office.items() if centroid == old_centroid
-                ]
-
+            for cluster in clusters.values():
                 # Calculate position of cluster centroid (using average position of points in cluster)
-                centroid = tuple(map(sum, zip(*cluster)))
-                centroid = tuple(map(lambda p: round(p/len(cluster)), centroid))
+                centroid = world.costs[cluster].dropna().sum(axis=1).idxmin()
                 centroids.add(centroid)
 
             # Check for changes in the location of offices
-            if centroids == {office.location for office in offices}:
+            if centroids == set(office_spots):
                 # If centroids did not change between iterations, store solution and cost
                 solution = tuple(Office(*spot) for spot in centroids)
                 solutions[solution] = total_cost
                 break
             else:
                 # Update offices
-                offices = [Office(*centroid) for centroid in centroids]
+                office_spots = list(centroids)
                 # Assure the number of cluster is constant
-                if len(offices) < n_offices:
-                    offices.extend([
-                        Office(*spot) for spot in random.choices(
-                            tuple(world.allowed_spots(occupied_spots)), k=n_offices - len(offices)
-                        )
-                    ])
+                if len(office_spots) < n_offices:
+                    office_spots += random.choices(
+                        tuple(world.allowed_spots(customer_spots + office_spots)),
+                        k=n_offices - len(office_spots)
+                    )
 
     # Return solution with the smallest cost
     return list(min(solutions, key=solutions.get))
@@ -119,6 +101,19 @@ if __name__ == '__main__':
     args = validate_args(parser)
     world_objects = read_map_file(args['map_file'])
 
-    final_offices = allocate_offices(**world_objects)
+    try:
+        with open(f"{args['map_file']}.pickle", 'rb') as file:
+            world_objects['world'] = pickle.load(file)
+    except FileNotFoundError:
+        world_objects['world'].calculate_costs_to_customers(world_objects['customers'])
 
-    world_objects['world'].view_map(world_objects['customers'], final_offices)
+    final_offices = allocate_offices(**world_objects)
+    paths = []
+    for customer in world_objects['customers']:
+        office = world_objects['world'].costs[customer.location][[office.location for office in final_offices]].idxmin()
+        path = world_objects['world'].PATHS_FROM_TO[(office, customer.location)]
+        paths.append(path)
+
+    world_objects['world'].view_map(world_objects['customers'], final_offices, paths=paths)
+    with open(f"{args['map_file']}.pickle", 'wb') as file:
+        pickle.dump(world_objects['world'], file)
